@@ -8,9 +8,8 @@ config = {
     'author': 'Omid Khosravani',
     'url': 'https://github.com/trxw/trappedionsqsim',
     'version': '0.1',
-    'install_requires': ['qutip'],
-    'packages': ['trappedionsqsim',],
-    'scripts': ['bin/trappedionsqsim'],
+    'install_requires': ['qutip', 'numpy', 'matplotlib', 'scipy'],
+    'packages': ['operators',],
     'name': 'trappedionsqsim'
 }
 
