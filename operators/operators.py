@@ -27,24 +27,24 @@ class Operators(object):
         """Define an annihiliation operator on the motional state of i-th ion.
         i = 1, 2, 3, ... number_of_ions
         """
-        if i <= self.D_e:
+        if i <= self.D_F:
             return tensor( [qeye(self.D_e) 
                             for i in range(1, self.N_e+1)] + 
                             [ destroy(self.D_F) if j == i else qeye(self.D_F) 
                             for j in range(1, self.N_F+1) ] )
         else: 
-            print("Mode number should be between 1 and "+str(N_F))
+            print("Mode number should be between 1 and "+str(self.N_F))
 
     def ad_func(self, i):
         """Define a creation operator on the motional state of i-th ion.
         i = 1, 2, 3, ... number_of_ions
         """
-        if i <= self.D_e:
+        if i <= self.D_F:
             return tensor( [qeye(self.D_e) for i in range(1, self.N_e+1)] 
                            + [ create(self.D_F) if j == i else qeye(self.D_F) 
                             for j in range(1, self.N_F+1) ] )
         else: 
-            print("Mode number should be between 1 and "+str(N_F))
+            print("Mode number should be between 1 and "+str(self.N_F))
 
     
     def sm_func(self, i):
@@ -126,11 +126,14 @@ class Operators(object):
         """Projection operator |state1><state2|
         where state is the state number 
         going from 0 to self.N_e-1.
+        use state -1 for projection of identity onto correpsonding ion
         """
         if len(state1) == self.N_e and len(state2) == self.N_e:
 
-            return tensor(tensor([basis(self.D_e, state1[i-1])*basis(self.D_e, state2[i-1]).dag() 
-                            for i in range(1, self.N_e+1)]), tensor([qeye(self.D_F) for i in range(self.N_F)]))
+            return tensor([basis(self.D_e, state1[i-1])*basis(self.D_e, state2[i-1]).dag()
+                                  if ((state1[i - 1] >= 0) and (state2[i - 1] >=0))
+                                  else qeye(self.D_e) for i in range(1, self.N_e + 1)] +
+                                  [qeye(self.D_F) for i in range(1, self.N_F + 1)])
         else:
             print("Number of arguments should be ")
 
