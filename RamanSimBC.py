@@ -173,7 +173,7 @@ def MQramanDynamicsBC(Expm):
 
         #######Create Motional Hamiltonian Components##########
         for m in range(0, modes):
-            HM.append([op.id(), eta[m]*1j*op.ad_func(m+1), eta[m]*1j*op.a_func(m+1)])
+            HM.append([op.id(), eta[m]*1j*op.ad(m+1), eta[m]*1j*op.a(m+1)])
 
         ######################################################
 
@@ -183,7 +183,7 @@ def MQramanDynamicsBC(Expm):
                 for c in range(0, 2):
                     for i in range(0, 3):
                         func = ('exp(1j*(%f*t + %f))' % (det[c][i]+vibF[m][e], Phase[c]))
-                        H.append([O[c][0][i + 1][0]*op.coupling([-1, 0], [-1, i + 1])*HM[m][e], func])
+                        H.append([O[c][0][i + 1][0]*op.coupling([[-1, 0]], [[-1, i + 1]])*HM[m][e], func])
 
 
         for m in range(0, modes):
@@ -191,7 +191,7 @@ def MQramanDynamicsBC(Expm):
                 for c in range(0, 2):
                     for i in range(0, 3):
                         func = ('exp(-1j*(%f*t + %f))' % (det[c][i]+vibF[m][e], Phase[c]))
-                        H.append([O[c][0][0][i + 1]*op.coupling([-1, i + 1], [-1, 0])*HM[m][e].dag(), func])
+                        H.append([O[c][0][0][i + 1]*op.coupling([[]-1, i + 1]], [[-1, 0]])*HM[m][e].dag(), func])
 
         for c1 in range(0, 2):
             for c0 in range(0, 2):
@@ -199,7 +199,7 @@ def MQramanDynamicsBC(Expm):
                     for j in range(1, 4):
                         if (i != j):
                             func = ('exp(1j*(%f*t + %f))' % (det[c1][i-1] - det[c0][j-1], Phase[c0] - Phase[c1]))
-                            H.append([O[c][0][i][j]*op.coupling([-1, j], [-1, i])*op.id(), func])
+                            H.append([O[c][0][i][j]*op.coupling([[-1, j]], [[-1, i]])*op.id(), func])
 
         #######################################
 
@@ -209,14 +209,14 @@ def MQramanDynamicsBC(Expm):
                 for c in range(0, 2):
                     for i in range(0, 3):
                         func = ('exp(1j*(%f*t + %f))' % (det[c][i]+vibF[m][e], Phase[c]))
-                        H.append([O[c][0][i + 1][0]*op.coupling([0, -1], [i + 1, -1])*HM[m][e], func])
+                        H.append([O[c][0][i + 1][0]*op.coupling([[0, -1]], [[i + 1, -1]])*HM[m][e], func])
 
         for m in range(0, modes):
             for e in range(0, 3):
                 for c in range(0, 2):
                     for i in range(0, 3):
                         func = ('exp(-1j*(%f*t + %f))' % (det[c][i]+vibF[m][e], Phase[c]))
-                        H.append([O[c][0][0][i + 1]*op.coupling([i + 1, -1], [0, -1])*HM[m][e].dag(), func])
+                        H.append([O[c][0][0][i + 1]*op.coupling([[i + 1, -1]], [[0, -1]])*HM[m][e].dag(), func])
 
         for c1 in range(0, 2):
             for c0 in range(0, 2):
@@ -224,7 +224,7 @@ def MQramanDynamicsBC(Expm):
                     for j in range(1, 4):
                         if (i != j):
                             func = ('exp(1j*(%f*t + %f))' % (det[c1][i-1] - det[c0][j-1], Phase[c0] - Phase[c1]))
-                            H.append([O[c][0][i][j]*op.coupling([j, -1], [i, -1])*op.id(), func])
+                            H.append([O[c][0][i][j]*op.coupling([[j, -1]], [[i, -1]])*op.id(), func])
 
         #########################################
 

@@ -1,9 +1,14 @@
 from __future__ import division, absolute_import, print_function, unicode_literals
 
-
-from qutip import *
+import qutip as qtp
 import numpy as np
 from scipy import *
+
+#A library for automatical generation of quantum operators 
+#Created by Omid Khosravani
+#Duke University and Georgia Institute of Technology 
+#2017-2019 
+ 
 
 class Operators(object):
     """
@@ -15,86 +20,198 @@ class Operators(object):
     """
     def __init__(self, number_of_ions = 1,
                 dim_of_electronic_states_space = 2,
-                number_of_motional_modes = 1,
-                dim_of_each_Fock_space = 20):
+                number_of_motional_modes = 0,
+                dim_of_each_Fock_space = 0):
+
         self.N_e = number_of_ions
         self.D_F = dim_of_each_Fock_space
         self.N_F = number_of_motional_modes
         self.D_e = dim_of_electronic_states_space
+        #Verify the range of valid values:
+        self._error(self.N_e, 1, float("inf"), "Number of ions")
+        self._error(self.D_e, 2, float("inf"), "Dimension of Electronic Hilbert space of each ion")
+        self._error(self.N_F, 0, self.N_e, "Number of Fock states")
+        if self.N_F>0:
+            self._error(self.D_F, 2, float("inf"), "Dimension of Fock space of the motional state of each ion")
 
-
-    def a_func(self, i):
+    def a(self, ion_num):
         """Define an annihiliation operator on the motional state of i-th ion.
         i = 1, 2, 3, ... number_of_ions
         """
-        if i <= self.D_F:
-            return tensor( [qeye(self.D_e) 
-                            for i in range(1, self.N_e+1)] + 
-                            [ destroy(self.D_F) if j == i else qeye(self.D_F) 
-                            for j in range(1, self.N_F+1) ] )
-        else: 
-            print("Mode number should be between 1 and "+str(self.N_F))
+        if self.N_F == 0:
+            raise ValueError("Fock space is not defined")
+        self._error(ion_num, 1, self.N_F, "Mode number")
 
-    def ad_func(self, i):
+        return qtp.tensor( [qtp.qeye(self.D_e)
+            for i in range(self.N_e)] + 
+            [ qtp.destroy(self.D_F) if j == ion_num else qtp.qeye(self.D_F) for j in range(1, self.N_F+1) ] )
+
+    def adag(self, ion_num):
         """Define a creation operator on the motional state of i-th ion.
         i = 1, 2, 3, ... number_of_ions
         """
-        if i <= self.D_F:
-            return tensor( [qeye(self.D_e) for i in range(1, self.N_e+1)] 
-                           + [ create(self.D_F) if j == i else qeye(self.D_F) 
-                            for j in range(1, self.N_F+1) ] )
-        else: 
-            print("Mode number should be between 1 and "+str(self.N_F))
+        
 
-    
-    def sm_func(self, i):
+        return self.a(ion_num).dag()
+
+    def _error(self, i,min_lim, max_lim, st):
+
+        if not isinstance(i,int) or i<min_lim or i>max_lim:
+            raise ValueError(st+" "+"must be greater than or equal to "+str(min_lim)+ " and " + "less than or equal to "+str(max_lim))
+
+
+    def sm(self, ion_num):
         """Define an annihiliation operator on the electronic state of i-th ion.
         i = 1, 2, 3, ... number_of_ions
         """
-        return tensor( [destroy(self.D_e) if j == i else qeye(self.D_e) 
+
+        self._error(ion_num, 1, self.N_e, "Ion number")
+
+        
+        return qtp.tensor( [qtp.destroy(self.D_e) if j == ion_num else qtp.qeye(self.D_e) 
                         for j in range(1, self.N_e+1)]
-                        + [ qeye(self.D_F) for j in range(1, self.N_F+1) ] )
+                        + [ qtp.qeye(self.D_F) for j in range(self.N_F) ] )
+
     
-    def sp_func(self, i):
+    def sp(self, ion_num):
         """Define a creation operator on the electronic state of i-th ion.
         i = 1, 2, 3, ... number_of_ions
         """
-    
-        return tensor( [create(self.D_e) if j == i else qeye(self.D_e) 
-                        for j in range(1, self.N_e+1)] 
-                        + [ qeye(self.D_F) for j in range(1, self.N_F+1) ] )
+        self._error(ion_num, 1, self.N_e, "Ion number")
 
-    def ket(self, *state):
-        """Define a pure quantum state, with first self.N enries the electronic states of ions,
+        
+        return tensor( [qtp.create(self.D_e) if j == ion_num else qtp.qeye(self.D_e) 
+                        for j in range(1, self.N_e+1)]
+                        + [ qtp.qeye(self.D_F) for j in range(self.N_F) ] )
+
+
+  
+
+    def dm_pure(self, e_state_list, motional_state_list=[]):
+        """Return a density matrix of a pure quantum state, with first self.N enries the electronic states of ions,
         and the second self.N entries the motional states of ions.
-        Note: Use projection() to redefine this method.
         """
+        return qtp.tensor(self.state.ket(e_state_list, motional_state_list), self.state.ket(e_state_list, motional_state_list).dag())
+    
+    def ket(self, e_state_list, motional_state_list=[]):
+        """Return a pure quantum state, with first self.N enries the electronic states of ions,
+        and the second self.N entries the motional states of ions.
+        """
+        if len(e_state_list) != self.N_e:
+            raise ValueError("Length of electronic_state_list must be equal to " + str(self.N_e) )
+        if len(motional_state_list) != self.N_F:
+            raise ValueError("Length of motional_state_list must be equal to " + str(self.N_F))
 
-        if len(state) == self.N_e+self.N_F:
+        self._error(len(motional_state_list), 0, self.N_F, "Length of motional state list")
 
-            return tensor([basis(self.D_e, state[i-1]) 
-                            for i in range(1, self.N_e+1)]
-                            +[basis(self.D_F, state[i-1]) 
-                            for i in range(self.N_e+1, self.N_e+self.N_F+1)])
-        else:
-            print("Number of arguments should be "+str(2*self.N))
+        for i in e_state_list:
+            self._error(i, 0, self.D_e-1, "Electronic state number")
+        for j in motional_state_list:
+            self._error(j, 0, self.D_F-1, "Motional state number")
 
-    def thermal_dm(self, *args):
-        average_phonon_num = args[0]
-        state              = args[1:]
-        if len(state) != self.N_e:
-            print("Number of states must be equal to dimension of Hilbert space of electronic states.")
+        return qtp.tensor([qtp.basis(self.D_e, e_state_list[i]) 
+                        for i in range(self.N_e)]  
+                        +[qtp.basis(self.D_F, motional_state_list[j]) 
+                        for j in range(self.N_F)])
 
-        elif average_phonon_num<self.D_F:
-            return tensor( [basis(self.D_e, state[i-1])*basis(self.D_e, state[i-1]).dag() 
-                            for i in range(1, self.N_e+1)] +
-                           [thermal_dm(self.D_F, average_phonon_num) 
-                            for i in range(1, self.N_F+1)] )
-        else:
-            print("Argument average_phonon_num must be less than Dimension of each mode's Fock space.")
 
-            
-    def coherent_dm(self, *args): 
+    def eprojection(self, e_state_list, motional_state_list): 
+        """Projection operator |state><state|
+        where state is the states number list 
+        go from 0 to self.D_e-1
+        and 
+        go from 0 to self.D_F-1
+        """
+        return qtp.tensor( self.ket(e_state_list, motional_state_list),  self.ket(e_state_list, motional_state_list).dag() )
+    
+    def coupling(self, state1, state2): #Not tested
+        """Projection operator |state1><state2|
+         where state1&2 each are the states number list 
+        go from 0 to self.D_e-1
+        and 
+        go from 0 to self.D_F-1
+        """
+        if len(state1)==2 and len(state2) ==2:
+            e_state_list1, motional_state_list1 = state1[0], state1[1]
+            e_state_list2, motional_state_list2 = state2[0], state2[1]
+        elif len(state1)==1 and len(state2) ==1:
+            e_state_list1, motional_state_list1 = state1[0], []
+            e_state_list2, motional_state_list2 = state2[0], []
+
+        return qtp.tensor( self.ket(e_state_list1, motional_state_list1),  self.ket(e_state_list2, motional_state_list2).dag() )
+
+
+    def sx(self, ion_num):
+        """Return sigmax() operator acting on the electronic state of 
+        i-th ion, where i = 1, 2, ... self.N
+        """
+        self._error(ion_num, 1, self.N_e, "Ion number")
+        return qtp.tensor( [qtp.sigmax() if j == ion_num else qtp.qeye(2) for j in range(1, self.N_e+1) ] + 
+                        [ qtp.qeye(self.D_F) for j in range(1, self.N_F+1)] )
+
+    def sy(self, ion_num):
+        """Return sigmay() operator acting on the electronic state of 
+        i-th ion, where i = 1, 2, ... self.N
+        """
+        self._error(ion_num, 1, self.N_e, "Ion number")
+        return qtp.tensor( [qtp.sigmay() if j == ion_num else qtp.qeye(2) for j in range(1, self.N_e+1) ] + 
+                        [ qtp.qeye(self.D_F) for j in range(1, self.N_F+1)] )
+
+    def sz(self, ion_num):
+        """Return sigmaz() operator acting on the electronic state of 
+        i-th ion, where i = 1, 2, ... self.N
+        """
+        self._error(ion_num, 1, self.N_e, "Ion number")
+        return qtp.tensor( [qtp.sigmaz() if j == ion_num else qtp.qeye(2) for j in range(1, self.N_e+1) ] + 
+                        [ qtp.qeye(self.D_F) for j in range(1, self.N_F+1)] )
+
+
+    def id(self):
+        """Return identity operator acting on the entire Hilbert space 
+        of the problem.
+        """
+        return qtp.tensor( [qtp.qeye(self.D_e) for j in range(self.N_e) ] + 
+                   [qtp.qeye(self.D_F) for j in range(self.N_F)] )
+
+
+class States(Operators):
+    def __init__(self, number_of_ions = 1,
+                dim_of_electronic_states_space = 2,
+                number_of_motional_modes = 0,
+                dim_of_each_Fock_space = 0):
+        super(Operators, self).__init__(number_of_ions,
+                dim_of_electronic_states_space,
+                number_of_motional_modes,
+                dim_of_each_Fock_space)
+
+
+
+    def ket(self, e_state_list, motional_state_list=[]):
+        """Return a pure quantum state, with first self.N enries the electronic states of ions,
+        and the second self.N entries the motional states of ions.
+        """
+        if len(e_state_list) != self.N_e:
+            raise ValueError("Length of electronic_state_list must be equal to " + str(self.N_e) )
+        if len(motional_state_list) != self.N_F:
+            raise ValueError("Length of motional_state_list must be equal to " + str(self.N_F))
+
+        self._error(len(motional_state_list), 0, self.N_F, "Length of motional state list")
+
+        for i in e_state_list:
+            self._error(i, 0, self.D_e-1, "Electronic state number")
+        for j in motional_state_list:
+            self._error(j, 0, self.D_F-1, "Motional state number")
+
+        return qtp.tensor([qtp.basis(self.D_e, e_state_list[i]) 
+                        for i in range(self.N_e)]  
+                        +[qtp.basis(self.D_F, motional_state_list[j]) 
+                        for j in range(self.N_F)])
+
+    '''
+
+       
+   
+    def coherent_dm(self, *args): #Not tested
         if len(args) != self.N_F+self.N_e:
             print("Number of argument must be number of motional modes plus number of ions.")
         else:
@@ -107,82 +224,6 @@ class Operators(object):
                 return tensor( [basis(self.D_e, state[i-1])*basis(self.D_e, state[i-1]).dag() 
                                 for i in range(1, self.N_e+1)] +
                                [coherent_dm(self.D_F, alpha[i-1]) 
-                                for i in range(1, self.N_F+1)] )
+                                for i in range(1, self.N_F+1)] )  
 
-            
-    def eprojection(self, state):
-        """Projection operator |state><state|
-        where state is the state number 
-        going from 0 to self.N_e-1.
-        """
-        if len(state) == self.N_e:
-
-            return tensor(tensor([basis(self.D_e, state[i-1])*basis(self.D_e, state[i-1]).dag() 
-                            for i in range(1, self.N_e+1)]), tensor([qeye(self.D_F) for i in range(self.N_F)]))
-        else:
-            print("Number of arguments should be ")
-
-    def coupling(self, state1, state2):
-        """Projection operator |state1><state2|
-        where state is the state number 
-        going from 0 to self.N_e-1.
-        use state -1 for projection of identity onto correpsonding ion
-        """
-        if len(state1) == self.N_e and len(state2) == self.N_e:
-
-            return tensor([basis(self.D_e, state1[i-1])*basis(self.D_e, state2[i-1]).dag()
-                                  if ((state1[i - 1] >= 0) and (state2[i - 1] >=0))
-                                  else qeye(self.D_e) for i in range(1, self.N_e + 1)] +
-                                  [qeye(self.D_F) for i in range(1, self.N_F + 1)])
-        else:
-            print("Number of arguments should be ")
-
-     
-        
-
-    def sigmaz_func(self, i):
-        """Return sigmaz() operator acting on the electronic state of 
-        i-th ion, where i = 1, 2, ... self.N
-        Note: Use projection() to rewrite this.
-        """
-        if i>0 and i<=self.N_e:
-
-            return tensor( [sigmaz() if j == i else qeye(2) 
-                            for j in range(1, self.N_e+1) ] + 
-                            [ qeye(self.D_F) for j in range(1, self.N_F+1)] )
-        else:
-            print("Error: Ion number must be between 1 and number of ions")
-
-    def sigmax_func(self, i):
-        """Return sigmax() operator acting on the electronic state of 
-        i-th ion, where i = 1, 2, ... self.N
-        Note: Use projection() to rewrite this.
-        """
-        if i>0 and i<=self.N_e:
-            return tensor( [sigmax() if j == i else qeye(2) 
-                            for j in range(1, self.N_e+1) ] + 
-                            [ qeye(self.D_F) for j in range(1, self.N_F+1)] )
-        else:
-            print("Error: Ion number must be between 1 and number of ions")
-
-    def sigmay_func(self, i):
-        """Return sigmay() operator acting on the electronic state of 
-        i-th ion, where i = 1, 2, ... self.N
-        Note: Use projection() to rewrite this.
-        """
-        if i>0 and i<=self.N_e:
-            return tensor( [sigmay() if j == i else qeye(2) 
-                            for j in range(1, self.N_e+1) ] + 
-                            [ qeye(self.D_F) for j in range(1, self.N_F+1)] )
-        else:
-            print("Error: Ion number must be between 1 and number of ions")
-
-
-    def id(self):
-        """Return identity operator acting on the entire Hilbert space 
-        of the problem.
-        """
-        return tensor( [qeye(self.D_e) for j in range(1, self.N_e+1) ] + 
-                   [qeye(self.D_F) for j in range(1, self.N_F+1)] )
-
-
+    '''
