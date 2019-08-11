@@ -9,7 +9,7 @@ config = {
     'url': 'https://github.com/trxw/trappedionsqsim',
     'version': '0.1',
     'install_requires': ['qutip', 'numpy', 'matplotlib', 'scipy'],
-    'packages': ['operators',],
+    'packages': ['utils',],
     'name': 'trappedionsqsim'
 }
 
