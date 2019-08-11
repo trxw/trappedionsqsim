@@ -5,7 +5,7 @@ except ImportError:
 
 config = {
     'description': 'Quantum and Classical Simulations for Trapped Ions',
-    'author': 'Omid Khosravani, Lauren Lopez',
+    'author': 'Omid Khosravani, LDaniel Murphy, Lauren Lopez',
     'url': 'https://github.com/trxw/trappedionsqsim',
     'version': '0.1',
     'install_requires': ['qutip', 'numpy', 'matplotlib', 'scipy'],
