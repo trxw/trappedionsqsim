@@ -48,4 +48,4 @@ class Hamiltonian(Operators):
                         dim_of_each_Fock_space)
 
     def Hamiltonian(self, channel):
-        
+        pass
