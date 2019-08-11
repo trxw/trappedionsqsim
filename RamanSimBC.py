@@ -9,7 +9,7 @@ import numpy as np
 from numpy import pi
 from qutip import *
 import matplotlib.pyplot as plt
-import operators.operators as operators
+import utils.operators as operators
 import experiment
 import groundcoupling
 
