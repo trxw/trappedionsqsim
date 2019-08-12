@@ -34,25 +34,29 @@ class Operators(object):
         if self.N_F>0:
             self._error(self.D_F, 2, float("inf"), "Dimension of Fock space of the motional state of each ion")
 
-    def a(self, ion_num):
-        """Define an annihiliation operator on the motional state of i-th ion.
-        i = 1, 2, 3, ... number_of_ions
+    def a(self, mode_num):
+        """
+        params
+        mode_num = 1, 2, 3, ... number_of_motional_modes
+
+        return an annihiliation operator on the mode_num-th Fock space.
         """
         if self.N_F == 0:
             raise ValueError("Fock space is not defined")
-        self._error(ion_num, 1, self.N_F, "Mode number")
+        self._error(mode_num, 1, self.N_F, "Mode number")
 
         return qtp.tensor( [qtp.qeye(self.D_e)
             for i in range(self.N_e)] + 
-            [ qtp.destroy(self.D_F) if j == ion_num else qtp.qeye(self.D_F) for j in range(1, self.N_F+1) ] )
+            [ qtp.destroy(self.D_F) if j == mode_num else qtp.qeye(self.D_F) for j in range(1, self.N_F+1) ] )
 
-    def adag(self, ion_num):
-        """Define a creation operator on the motional state of i-th ion.
-        i = 1, 2, 3, ... number_of_ions
+    def ad(self, mode_num):
         """
-        
+        params
+        mode_num = 1, 2, 3, ... number_of_motional_modes
 
-        return self.a(ion_num).dag()
+        return an creation operator on the mode_num-th Fock space.
+        """
+        return self.a(mode_num).dag()
 
     def _error(self, i,min_lim, max_lim, st):
 
@@ -61,7 +65,7 @@ class Operators(object):
 
 
     def sm(self, ion_num):
-        """Define an annihiliation operator on the electronic state of i-th ion.
+        """Return an annihiliation operator on the electronic state of i-th ion.
         i = 1, 2, 3, ... number_of_ions
         """
 
@@ -74,13 +78,13 @@ class Operators(object):
 
     
     def sp(self, ion_num):
-        """Define a creation operator on the electronic state of i-th ion.
+        """Return a creation operator on the electronic state of i-th ion.
         i = 1, 2, 3, ... number_of_ions
         """
         self._error(ion_num, 1, self.N_e, "Ion number")
 
         
-        return tensor( [qtp.create(self.D_e) if j == ion_num else qtp.qeye(self.D_e) 
+        return qtp.tensor( [qtp.create(self.D_e) if j == ion_num else qtp.qeye(self.D_e) 
                         for j in range(1, self.N_e+1)]
                         + [ qtp.qeye(self.D_F) for j in range(self.N_F) ] )
 
