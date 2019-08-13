@@ -170,7 +170,7 @@ class Operators(object):
                         [ qtp.qeye(self.D_F) for j in range(1, self.N_F+1)] )
 
 
-    def id(self):
+    def id(self, ion_num=1):
         """Return identity operator acting on the entire Hilbert space 
         of the problem.
         """

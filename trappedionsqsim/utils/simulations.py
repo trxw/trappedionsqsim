@@ -1,6 +1,6 @@
 from __future__ import division, absolute_import, print_function, unicode_literals
 
-from qutip import *
+import qutip as qtp
 import numpy as np
 from scipy import *
 import types
@@ -9,6 +9,7 @@ from .operators import Operators
 #Created by Omid Khosravani, okhosravani@gatech.edu
 #Duke University and Georgia Institute of Technology 
 #2017-2019 
+
 
 
 class Simulation(Operators):
@@ -25,11 +26,11 @@ class Simulation(Operators):
                 number_of_motional_modes,
                 dim_of_each_Fock_space)
 
-        self.Hamiltonian = Hamiltonian(self.N_e,
-                self.D_e,
-                self.N_F,
-                self.D_F)
-        self.gates = Gate(self.N_e,
+        #self.Hamiltonian = Hamiltonian(self.N_e,
+        #        self.D_e,
+        #        self.N_F,
+        #        self.D_F)
+        self.gate = Gate(self.N_e,
                 self.D_e,
                 self.N_F,
                 self.D_F)
@@ -38,6 +39,7 @@ class Simulation(Operators):
 
         self.curr_t = 0. #Current time in simulation
         self.curr_state = None
+        self.states_list = []
         self.output_list = []
 
     """
@@ -55,10 +57,12 @@ class Simulation(Operators):
         self.time_evolve_list += [t_arr]
     """
 
-    def set_state(self, psi): #checked
+    def set_curr_state(self, psi): #tested
         self.curr_state = psi
+    def get_curr_state(self): #tested
+        return self.curr_state
 
-    def evolve_spline(self, Hamiltonian_list, t_arr, c_ops = [], observable_list=[]): #checked
+    def evolve_spline(self, Hamiltonian_list, t_arr, save_states=True, c_ops = [], observable_list=[]): #tested
         '''
         params
         Hamiltonian_list is a list of  [ [Hamiltonian1, coef_function1], [Hamiltonian2, coef_function2], ...] some of which is the total Hamiltonian applied in t_arr
@@ -72,22 +76,24 @@ class Simulation(Operators):
 
         
 
-        output = mcsolve(Hamiltonian_list, self.curr_state, t_arr, c_ops, observable_list)
+        output = qtp.mcsolve(Hamiltonian_list, self.curr_state, t_arr, c_ops, observable_list)
         self.output_list += [output]
-
+        self.set_curr_state(output.states[-1])
+        if save_states:
+            self.states_list += output.states
 
 
         return output
 
     
-    def time_step_isValid(self, Hamiltonian, psi, t_arr):#t1,t2, steps_num): #checked
+    def time_step_isValid(self, Hamiltonian, psi, t_arr):#t1,t2, steps_num): #tested
         '''Check to see if time step is small enough 
         '''
 
-        return abs(50*int(expect(Hamiltonian, psi)*(t_arr[1]-t_arr[0]) /np.pi) ) < 1.
+        return abs(50*int(qtp.expect(Hamiltonian, psi)*(t_arr[1]-t_arr[0]) /np.pi) ) < 1.
 
 
-    def apply_gate(self, gate_string):
+    def apply_gate(self, gate_string): #tested
         '''
         params
         set qubit gate S operator from Pauli basis {X, Y, Z, I} for 1 qubit, 
@@ -95,12 +101,47 @@ class Simulation(Operators):
         and so on. 
         '''
 
-        self.curr_state = self.gates.get_pauli(gate_string) * self.curr_state
+        self.curr_state = self.gate.get_pauli(gate_string) * self.curr_state
 
 
+class Gate(Operators): #tested
+    def __init__(self, number_of_ions = 1,
+                dim_of_electronic_states_space = 2,
+                number_of_motional_modes = 0,
+                dim_of_each_Fock_space = 0): 
+        #super().__init__(number_of_ions,
+        #                dim_of_electronic_states_space,
+        #                number_of_motional_modes,
+        #                dim_of_each_Fock_space)
+        self.ops = Operators(number_of_ions,
+                        dim_of_electronic_states_space,
+                        number_of_motional_modes,
+                        dim_of_each_Fock_space)
+        self.gates_dic = {'X': self.ops.sx, 'Y':self.ops.sy, 'Z':self.ops.sz, 'I':self.ops.id
+                            }
+
+    def get_pauli(self, gate_string):
+        '''
+        params
+        gate_string is a string of Pauli gates applied to each ion 1,2,3...
+        All upper-case as in gates_dic
+        return corresponding multiqubit Pauli gate
+        '''
+        for g in gate_string:
+            if g not in self.gates_dic:
+                raise ValueError("Wrong gate specified.")
+
+        if len(gate_string) != self.ops.N_e:
+            raise ValueError("Length of gate_string must be equal to the number of qubit") 
+        #print( self.gates_dic[gate_string[0]] )
+        pauli = self.ops.id()
+        for i_num in range(len(gate_string)):
+            pauli *= self.gates_dic[gate_string[i_num]](i_num+1) 
+        return pauli
 
 
-class Hamiltonian(Operators): #Not checked
+"""
+class Hamiltonian(Operators): #Not tested
     def __init__(self, number_of_ions = 1,
                 dim_of_electronic_states_space = 2,
                 number_of_motional_modes = 0,
@@ -128,40 +169,11 @@ class Hamiltonian(Operators): #Not checked
             self.rotation_functions += [f]
 
 
-    def set_Hamiltonian(self, ):
+    def set_Hamiltonian(self):
         pass
 
 
-class Gates(Operators): #Not checked
-    def __init__(self, number_of_ions = 1,
-                dim_of_electronic_states_space = 2,
-                number_of_motional_modes = 0,
-                dim_of_each_Fock_space = 0): 
-        super().__init__(number_of_ions,
-                        dim_of_electronic_states_space,
-                        number_of_motional_modes,
-                        dim_of_each_Fock_space)
 
-        self.gates_dic = {'X': self.sx, 'Y':self.sy, 'Z':self.sz, 'I':self.id
-                            }
-
-    def get_pauli(self, gate_string):
-        '''
-        params
-        gate_string is a string of Pauli gates applied to each ion 1,2,3...
-        All upper-case as in gates_dic
-        return corresponding multiqubit Pauli gate
-        '''
-        for g in gate_string:
-            if g not in self.gates_dic:
-                raise ValueError("Wrong gate specified.")
-
-        if len(gate_string) != self.N_e:
-            raise ValueError("Length of gate_string must be equal to the number of qubit") 
-        
-        return qtp.tensor( [self.gates_dic[g](ion_num+1) for ion_num,g in gate_string] )  
-
-'''
 class Channel(Operators):
     def __init__(self, number_of_ions = 1,
                 dim_of_electronic_states_space = 2,
@@ -171,5 +183,4 @@ class Channel(Operators):
                         dim_of_electronic_states_space,
                         number_of_motional_modes,
                         dim_of_each_Fock_space)
-
-'''
+"""
