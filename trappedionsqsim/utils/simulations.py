@@ -55,26 +55,36 @@ class Simulation(Operators):
         self.time_evolve_list += [t_arr]
     """
 
-    def set_state(self, psi):
+    def set_state(self, psi): #checked
         self.curr_state = psi
 
-    def evolve_spline(self, Hamiltonian_list, t_arr, observable_list, c_ops = []):
+    def evolve_spline(self, Hamiltonian_list, t_arr, c_ops = [], observable_list=[]): #checked
         '''
         params
-        Hamiltonian_list is a list of [Hamiltonian, coef_function] some of which is the total Hamiltonian applied in t_arr
+        Hamiltonian_list is a list of  [ [Hamiltonian1, coef_function1], [Hamiltonian2, coef_function2], ...] some of which is the total Hamiltonian applied in t_arr
         t_arr is the time array corresponding to this Hamiltonian 
         turn each function into a spline, simulate time evolution and return output, a qutip object 
+        verbose will print out the average value of time_step_isValid 
         '''
-        
+        for H in Hamiltonian_list: 
+            if not self.time_step_isValid(H[0], self.curr_state, t_arr): 
+                raise ValueError("Time steps are too large.")
 
         
 
         output = mcsolve(Hamiltonian_list, self.curr_state, t_arr, c_ops, observable_list)
         self.output_list += [output]
 
+
+
         return output
 
     
+    def time_step_isValid(self, Hamiltonian, psi, t_arr):#t1,t2, steps_num): #checked
+        '''Check to see if time step is small enough 
+        '''
+
+        return abs(50*int(expect(Hamiltonian, psi)*(t_arr[1]-t_arr[0]) /np.pi) ) < 1.
 
 
     def apply_gate(self, gate_string):
@@ -90,7 +100,7 @@ class Simulation(Operators):
 
 
 
-class Hamiltonian(Operators):
+class Hamiltonian(Operators): #Not checked
     def __init__(self, number_of_ions = 1,
                 dim_of_electronic_states_space = 2,
                 number_of_motional_modes = 0,
@@ -122,7 +132,7 @@ class Hamiltonian(Operators):
         pass
 
 
-class Gates(Operators):
+class Gates(Operators): #Not checked
     def __init__(self, number_of_ions = 1,
                 dim_of_electronic_states_space = 2,
                 number_of_motional_modes = 0,
