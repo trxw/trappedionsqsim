@@ -37,11 +37,7 @@ class Simulation(Operators):
         self.Hamiltonian_list = []
         self.time_evolve_list = []
 
-        self.curr_t = 0. #Current time in simulation
-        self.curr_state = None
-        self.states_list = []
-        self.output_list = []
-
+        self.reset()
     """
     def add_hamiltonian(self, hamiltonian, t_arr):
         '''
@@ -62,7 +58,7 @@ class Simulation(Operators):
     def get_curr_state(self): #tested
         return self.curr_state
 
-    def evolve_spline(self, Hamiltonian_list, t_arr, save_states=True, c_ops = [], observable_list=[]): #tested
+    def evolve_spline(self, Hamiltonian_list, t_arr, save_to_states_list=True, c_ops = [], observable_list=[]): #tested
         '''
         params
         Hamiltonian_list is a list of  [ [Hamiltonian1, coef_function1], [Hamiltonian2, coef_function2], ...] some of which is the total Hamiltonian applied in t_arr
@@ -70,17 +66,28 @@ class Simulation(Operators):
         turn each function into a spline, simulate time evolution and return output, a qutip object 
         verbose will print out the average value of time_step_isValid 
         '''
+        if len(t_arr) <100:
+            raise ValueError("Set t_arr to at least 100 time steps.")
+        if len(Hamiltonian_list)<1:
+            raise ValueError("Set at least one Hamiltonian in Hamiltonian_list: [ [Hamiltonian1, coef_function1],..].")
+
         for H in Hamiltonian_list: 
             if not self.time_step_isValid(H[0], self.curr_state, t_arr): 
                 raise ValueError("Time steps are too large.")
 
-        
+        if self.curr_state is None:
+            raise ValueError("Initial state not set.")
 
         output = qtp.mcsolve(Hamiltonian_list, self.curr_state, t_arr, c_ops, observable_list)
-        self.output_list += [output]
         self.set_curr_state(output.states[-1])
-        if save_states:
+
+
+        if  save_to_states_list:
             self.states_list += output.states
+            self.time_arr_list += [t_arr]
+            self.output_list += [output]
+
+
 
 
         return output
@@ -93,7 +100,7 @@ class Simulation(Operators):
         return abs(50*int(qtp.expect(Hamiltonian, psi)*(t_arr[1]-t_arr[0]) /np.pi) ) < 1.
 
 
-    def apply_gate(self, gate_string): #tested
+    def apply_gate(self, gate_string,  save_to_states_list=True): #tested
         '''
         params
         set qubit gate S operator from Pauli basis {X, Y, Z, I} for 1 qubit, 
@@ -102,6 +109,16 @@ class Simulation(Operators):
         '''
 
         self.curr_state = self.gate.get_pauli(gate_string) * self.curr_state
+        if  save_to_states_list:
+            self.states_list += [self.curr_state]
+
+
+    def reset(self):
+        self.set_curr_state(None)
+        self.states_list = []
+        self.output_list = []
+        self.time_arr_list = []
+        self.curr_t = 0. #Current time in simulation
 
 
 class Gate(Operators): #tested
