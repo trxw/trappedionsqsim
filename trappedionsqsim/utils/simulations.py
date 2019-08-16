@@ -58,16 +58,43 @@ class Simulation(Operators):
     def get_curr_state(self): #tested
         return self.curr_state
 
-    def evolve_spline(self, Hamiltonian_list, t_arr, save_to_states_list=True, c_ops = [], observable_list=[]): #tested
+    def evolve_spline(self, Hamiltonian_list, t_int, N_steps=None, save_to_states_list=True, c_ops = [], observable_list=[]): #tested
         '''
         params
         Hamiltonian_list is a list of  [ [Hamiltonian1, coef_function1], [Hamiltonian2, coef_function2], ...] some of which is the total Hamiltonian applied in t_arr
-        t_arr is the time array corresponding to this Hamiltonian 
+        t_int is the time-interval. If it hsa length 2 it specifies the first and last time [t1,t2]
+        otherwise it must be an array will all the time stamps
+        N_steps is the number of time steps to divide the time_interval corresponding to this Hamiltonian 
         turn each function into a spline, simulate time evolution and return output, a qutip object 
         verbose will print out the average value of time_step_isValid 
+
         '''
-        if len(t_arr) <100:
-            raise ValueError("Set t_arr to at least 100 time steps.")
+        if not (isinstance(t_int, list) or isinstance(t_int, np.ndarray)) or len(t_int) <2:
+            raise ValueError("Time interval must be a list or array of length at least 2.")
+        elif len(t_int) <2:
+            raise ValueError("Time interval must be a list or array of length at least 2.")
+
+        elif len(t_int) == 2:
+            if N_steps is None:
+                raise ValueError("Number of time steps must be specified.")
+            elif isinstance(N_steps, int):
+                if N_steps <2:
+                    print("N_steps must be at list 2.")
+                else:
+                    t_arr = np.array(t_int[0], t_int[1], N_steps)
+
+        
+        elif len(t_int) <100:
+            raise ValueError("Set t_int to at least 100 time steps.")
+
+        elif len(t_int)>=100:
+            print("t_arr is set")
+            t_arr = t_int
+
+        if t_arr[0] != self.curr_t:
+            raise ValueError("First time stamp does not match the current time stamp curr_t.")
+
+
         if len(Hamiltonian_list)<1:
             raise ValueError("Set at least one Hamiltonian in Hamiltonian_list: [ [Hamiltonian1, coef_function1],..].")
 
@@ -78,16 +105,27 @@ class Simulation(Operators):
         if self.curr_state is None:
             raise ValueError("Initial state not set.")
 
+        #self.states_list += [self.curr_state]
+
+
         output = qtp.mcsolve(Hamiltonian_list, self.curr_state, t_arr, c_ops, observable_list)
         self.set_curr_state(output.states[-1])
 
 
         if  save_to_states_list:
-            self.states_list += output.states
-            self.time_arr_list += [t_arr]
+            if len(self.states_list) != 0 :
+                self.states_list = self.states_list[:-1] + output.states
+            else:
+                self.states_list = output.states
+
+            if len( self.time_arr )  != 0:
+                self.time_arr = np.concatenate( (self.time_arr[:-1], t_arr ) )
+            else: 
+                self.time_arr = t_arr
+
             self.output_list += [output]
 
-
+        self.curr_t = t_arr[-1]
 
 
         return output
@@ -96,8 +134,9 @@ class Simulation(Operators):
     def time_step_isValid(self, Hamiltonian, psi, t_arr):#t1,t2, steps_num): #tested
         '''Check to see if time step is small enough 
         '''
-
-        return abs(50*int(qtp.expect(Hamiltonian, psi)*(t_arr[1]-t_arr[0]) /np.pi) ) < 1.
+        print("Checking time step in time-evolution:")
+        print("Transition matrix element after first time-step: ", qtp.expect(Hamiltonian, psi)*(t_arr[1]-t_arr[0]) /np.pi) 
+        return 50*int(abs(qtp.expect(Hamiltonian, psi)*(t_arr[1]-t_arr[0]) /np.pi) ) < 1.
 
 
     def apply_gate(self, gate_string,  save_to_states_list=True): #tested
@@ -114,10 +153,10 @@ class Simulation(Operators):
 
 
     def reset(self):
-        self.set_curr_state(None)
+        #self.set_curr_state(None)
         self.states_list = []
         self.output_list = []
-        self.time_arr_list = []
+        self.time_arr = np.array([])
         self.curr_t = 0. #Current time in simulation
 
 
