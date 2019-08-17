@@ -130,7 +130,7 @@ class Simulation(Operators):
 
         return output
 
-    
+
     def time_step_isValid(self, Hamiltonian, psi, t_arr):#t1,t2, steps_num): #tested
         '''Check to see if time step is small enough 
         '''
@@ -139,7 +139,7 @@ class Simulation(Operators):
         return 50*int(abs(qtp.expect(Hamiltonian, psi)*(t_arr[1]-t_arr[0]) /np.pi) ) < 1.
 
 
-    def apply_gate(self, gate_string,  save_to_states_list=True): #tested
+    def apply_gate(self, gate_string,  duration=0, save_to_states_list=True): #duration = 0 tested, duration>0 is buggy
         '''
         params
         set qubit gate S operator from Pauli basis {X, Y, Z, I} for 1 qubit, 
@@ -148,8 +148,21 @@ class Simulation(Operators):
         '''
 
         self.curr_state = self.gate.get_pauli(gate_string) * self.curr_state
-        if  save_to_states_list:
-            self.states_list += [self.curr_state]
+
+        if save_to_states_list:
+            
+            if len(self.states_list)>0:
+                self.states_list = self.states_list[:-1] + [self.curr_state]
+            else: 
+                self.states_list = self.curr_state
+
+
+            if duration > 0.:
+                if len(self.time_arr) > 0:
+                    self.time_arr = np.concatenate( (self.time_arr, np.array([self.time_arr[-1]+duration]) ) )
+                else:
+                    self.time_arr = np.array([self.curr_t, self.curr_t+duration]) 
+
 
 
     def reset(self):
